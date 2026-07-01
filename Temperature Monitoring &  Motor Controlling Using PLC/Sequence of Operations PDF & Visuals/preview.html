@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLC Automation Flow Visualization</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    padding:20px;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+}
+
+.network{
+    background:#1e293b;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:25px;
+    border:1px solid #334155;
+}
+
+.network h2{
+    margin-bottom:15px;
+    color:#38bdf8;
+}
+
+.flow{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:15px;
+}
+
+.block{
+    min-width:140px;
+    text-align:center;
+    padding:15px;
+    border-radius:10px;
+    background:#334155;
+    transition:0.4s;
+    position:relative;
+}
+
+.arrow{
+    font-size:30px;
+    color:#38bdf8;
+}
+
+.active{
+    animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse{
+    0%{
+        background:#16a34a;
+        transform:scale(1);
+    }
+    50%{
+        background:#22c55e;
+        transform:scale(1.08);
+    }
+    100%{
+        background:#16a34a;
+        transform:scale(1);
+    }
+}
+
+.status{
+    margin-top:15px;
+    font-size:18px;
+    color:#facc15;
+}
+
+.control-panel{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:30px;
+    justify-content:center;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.start{
+    background:#16a34a;
+    color:white;
+}
+
+.stop{
+    background:#dc2626;
+    color:white;
+}
+
+.reset{
+    background:#2563eb;
+    color:white;
+}
+
+input[type=range]{
+    width:300px;
+}
+
+.value{
+    font-size:22px;
+    color:#38bdf8;
+    font-weight:bold;
+}
+
+.fault{
+    background:#dc2626 !important;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>PLC Automation Process Visualization</h1>
+
+<div class="control-panel">
+
+<button class="start" onclick="startSystem()">START</button>
+<button class="stop" onclick="stopSystem()">STOP</button>
+<button class="reset" onclick="resetFault()">RESET FAULT</button>
+
+<div>
+Temperature:
+<input type="range" min="0" max="100" value="20" id="tempSlider">
+<span class="value" id="tempValue">20°C</span>
+</div>
+
+</div>
+
+<!-- Network 1 -->
+
+<div class="network">
+<h2>Network 1 - Start / Stop Logic</h2>
+
+<div class="flow">
+
+<div class="block" id="startPB">Start PB</div>
+<div class="arrow">➜</div>
+
+<div class="block" id="memoryBit">System Memory</div>
+<div class="arrow">➜</div>
+
+<div class="block" id="runCommand">Run Command</div>
+
+</div>
+
+<div class="status" id="runStatus">
+System Stopped
+</div>
+
+</div>
+
+<!-- Network 2 -->
+
+<div class="network">
+<h2>Network 2 - Forward / Reverse Control</h2>
+
+<div class="flow">
+
+<div class="block" id="motorForward">
+Motor Forward
+</div>
+
+<div class="arrow">⇄</div>
+
+<div class="block" id="motorReverse">
+Motor Reverse
+</div>
+
+<div class="arrow">➜</div>
+
+<div class="block" id="limitSwitch">
+Limit Switch
+</div>
+
+</div>
+
+</div>
+
+<!-- Network 3 -->
+
+<div class="network">
+<h2>Network 3 - Analog Scaling</h2>
+
+<div class="flow">
+
+<div class="block">
+AI Raw Value<br>
+0-27648
+</div>
+
+<div class="arrow">➜</div>
+
+<div class="block">
+NORM_X
+</div>
+
+<div class="arrow">➜</div>
+
+<div class="block">
+SCALE_X
+</div>
+
+<div class="arrow">➜</div>
+
+<div class="block" id="scaledTemp">
+0 °C
+</div>
+
+</div>
+
+</div>
+
+<!-- Network 4 -->
+
+<div class="network">
+<h2>Network 4 - Temperature Based Frequency Selection</h2>
+
+<div class="flow">
+
+<div class="block" id="hz15">
+15 Hz<br>
+25 - 39.9°C
+</div>
+
+<div class="block" id="hz25">
+25 Hz<br>
+40 - 64.9°C
+</div>
+
+<div class="block" id="faultBlock">
+FAULT<br>
+≥ 65°C
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let running=false;
+let fault=false;
+
+const tempSlider=document.getElementById("tempSlider");
+const tempValue=document.getElementById("tempValue");
+
+function startSystem(){
+
+if(fault) return;
+
+running=true;
+
+document.getElementById("startPB").classList.add("active");
+document.getElementById("memoryBit").classList.add("active");
+document.getElementById("runCommand").classList.add("active");
+document.getElementById("motorForward").classList.add("active");
+
+document.getElementById("runStatus").innerHTML=
+"Motor Running";
+
+}
+
+function stopSystem(){
+
+running=false;
+
+document.querySelectorAll(".active").forEach(x=>{
+x.classList.remove("active");
+});
+
+document.getElementById("runStatus").innerHTML=
+"System Stopped";
+
+}
+
+function resetFault(){
+
+fault=false;
+
+document.getElementById("faultBlock").classList.remove("fault");
+
+document.getElementById("runStatus").innerHTML=
+"Fault Reset Successful";
+
+}
+
+tempSlider.addEventListener("input",()=>{
+
+let temp=parseFloat(tempSlider.value);
+
+tempValue.innerHTML=temp+"°C";
+
+document.getElementById("scaledTemp").innerHTML=
+temp+" °C";
+
+document.getElementById("hz15").classList.remove("active");
+document.getElementById("hz25").classList.remove("active");
+
+if(temp>=25 && temp<=39.9){
+
+document.getElementById("hz15").classList.add("active");
+
+}
+
+else if(temp>=40 && temp<=64.9){
+
+document.getElementById("hz25").classList.add("active");
+
+}
+
+else if(temp>=65){
+
+fault=true;
+
+document.getElementById("faultBlock").classList.add("fault");
+
+document.getElementById("runStatus").innerHTML=
+"FAULT ACTIVE - Temperature Too High";
+
+stopSystem();
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
